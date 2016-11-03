@@ -34,3 +34,5 @@ using (var formData = new MultipartFormData()
     // Get the Boundary
     var boundary = formData.Boundary;
 }
+
+more infomations,you can find in MultipartFormData_sample.cs
