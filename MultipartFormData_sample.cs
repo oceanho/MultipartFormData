@@ -23,14 +23,14 @@ namespace AimaTeam.Http.Sample
                 .AddFileObject(data_file.key, data_file.filename, data_file.data)
                 .End())
             {
-                // Get Data Bytes
-                var bytes = formData.GetDataBytes();
+                    // Get multipart/form-data as bytes
+                    var bytes = formData.GetDataBytes();
 
-                // Get Data Stream
-                var stream = formData.GetDataStream();
+                    // Get the multipart/form-data as Stream
+                    var stream = formData.GetDataStream();
 
-                // Get Boundary
-                var boundary = formData.Boundary;
+                    // Get the Boundary
+                    var boundary = formData.Boundary;
             }
         }
     }
