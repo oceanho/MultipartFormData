@@ -4,6 +4,8 @@ The MultipartFormData,It's support http request body build when the mediaType is
 # How use it ?
 download the MultipartFormData.cs and include to your project
 
+and then
+
 using AimaTeam.Http;
 
 // param
