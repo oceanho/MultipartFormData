@@ -4,7 +4,7 @@ using System.Text;
 
 namespace AimaTeam.Http
 {
-    /* *
+     /* *
      * 
      * Multipart/form-data 请求参数构建对象。可以构建一个完整的multipart/form-data所需要的请求参数
      * 
@@ -42,7 +42,7 @@ namespace AimaTeam.Http
         private int flag = 0;
 
         private string boundary;
-        private Stream dataStream;
+        private Stream formStream;
         private Encoding encoding;
 
         private byte[] newLineBytes;
@@ -76,6 +76,7 @@ namespace AimaTeam.Http
         public MultipartFormData(Stream dataStream, Encoding encoder)
         {
             encoding = encoder;
+            formStream = dataStream;
 
             boundary = "--OCEANHO" + DateTime.Now.Ticks.ToString("X");
             internalBoundaryBytes = Encoding.ASCII.GetBytes(boundary);
@@ -102,7 +103,7 @@ namespace AimaTeam.Http
         {
             get
             {
-                return dataStream.Length;
+                return formStream.Length;
             }
         }
 
@@ -138,7 +139,7 @@ namespace AimaTeam.Http
         {
             // 减去写入参数的结束boundary + 1个newline部分
             if (flag > 1)
-                dataStream.SetLength(dataStream.Length - (internalBoundaryBytes.Length + newLineBytes.Length));
+                formStream.SetLength(formStream.Length - (internalBoundaryBytes.Length + newLineBytes.Length));
 
             // 写入结束boundary
             Pri_WriteEndBoundary();
@@ -302,12 +303,12 @@ namespace AimaTeam.Http
         /// </summary>
         /// <param name="key">参数名称</param>
         /// <param name="fileObjName">文件名</param>
-        /// <param name="value">数据（文件的字节流或者数据块字节流）</param>
+        /// <param name="stream">数据（文件的字节流或者数据块字节流）</param>
         /// <param name="mediaType">文件类型</param>        
         /// <returns></returns>
         public MultipartFormData AddFileObject(string key, string fileObjName, Stream stream, string mediaType = null)
         {
-            return AddFileObject(key, fileObjName, Pri_GetDataBytes(dataStream, 4096), mediaType);
+            return AddFileObject(key, fileObjName, Pri_GetDataBytes(formStream, 4096), mediaType);
         }
 
         /// <summary>
@@ -318,7 +319,7 @@ namespace AimaTeam.Http
         {
             flag = 0;
             ResetPosition(0);
-            dataStream.SetLength(0);
+            formStream.SetLength(0);
             return this;
         }
 
@@ -330,9 +331,9 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public MultipartFormData ResetPosition(long position = 0)
         {
-            if (dataStream.Length <= position || position < 0)
-                throw new ArgumentOutOfRangeException("Invalid arguments, The position should be between 0 and " + (dataStream.Length > 0 ? dataStream.Length - 1 : 0));
-            dataStream.Position = position;
+            if (formStream.Length <= position || position < 0)
+                throw new ArgumentOutOfRangeException("Invalid arguments, The position should be between 0 and " + (formStream.Length > 0 ? formStream.Length - 1 : 0));
+            formStream.Position = position;
             return this;
         }
 
@@ -342,7 +343,7 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public Stream GetDataStream()
         {
-            return dataStream;
+            return formStream;
         }
 
         /// <summary>
@@ -352,7 +353,7 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public byte[] GetDataBytes(int bufferSize = 4096)
         {
-            return Pri_GetDataBytes(dataStream, bufferSize);
+            return Pri_GetDataBytes(formStream, bufferSize);
         }
 
         #region Impl -> IDisposeable
@@ -362,11 +363,14 @@ namespace AimaTeam.Http
         /// </summary>
         public void Dispose()
         {
-            if (dataStream != null)
+            if (formStream != null)
             {
-                dataStream.Dispose();
-                dataStream = null;
+                formStream.Dispose();
+                formStream = null;
             }
+            newLineBytes = null;
+            internalBoundaryBytes = null;
+            internalBoundaryStartOrEndBytes = null;            
         }
         #endregion
 
@@ -405,7 +409,7 @@ namespace AimaTeam.Http
         /// </summary>
         private void Pri_Write(byte[] bytes)
         {
-            dataStream.Write(bytes, 0, bytes.Length);
+            formStream.Write(bytes, 0, bytes.Length);
         }
 
         /// <summary>
@@ -413,7 +417,7 @@ namespace AimaTeam.Http
         /// </summary>
         private void Pri_WriteNewLine()
         {
-            dataStream.Write(newLineBytes, 0, newLineBytes.Length);
+            formStream.Write(newLineBytes, 0, newLineBytes.Length);
         }
 
         /// <summary>
@@ -431,10 +435,10 @@ namespace AimaTeam.Http
         private void Pri_WriteBoundary()
         {
             // 写入 boundary 前面 的  --
-            dataStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
+            formStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
 
             // 写入 boundary 
-            dataStream.Write(InternalBoundaryBytes, 0, InternalBoundaryBytes.Length);
+            formStream.Write(InternalBoundaryBytes, 0, InternalBoundaryBytes.Length);
         }
 
         /// <summary>
@@ -444,7 +448,7 @@ namespace AimaTeam.Http
         {
             Pri_WriteNewLine();
             Pri_WriteBoundary();
-            dataStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
+            formStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
         }
         #endregion
     }
