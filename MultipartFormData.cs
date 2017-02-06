@@ -33,13 +33,18 @@ namespace AimaTeam.Http
      * --${boundary}--
      * 
      * **/
+    /// <summary>
+    /// 
+    /// </summary>
     [Serializable]
     public class MultipartFormData : IDisposable
     {
         private int flag = 0;
+
         private string boundary;
         private Stream dataStream;
-        private Encoding _encoding;
+        private Encoding encoding;
+
         private byte[] newLineBytes;
         private byte[] internalBoundaryBytes;
         private byte[] internalBoundaryStartOrEndBytes;
@@ -47,18 +52,34 @@ namespace AimaTeam.Http
         private readonly static Encoding utf8_encodings = Encoding.UTF8;
         private readonly char[] invald_file_name_chars = new char[] { '\\', '/', '?', '"' };
 
+        /// <summary>
+        /// 
+        /// </summary>
         public MultipartFormData() :
             this(utf8_encodings)
         { }
 
-        public MultipartFormData(Encoding encoding)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="encoding">非二进制类参数写入时的读取编码方式</param>
+        public MultipartFormData(Encoding encoding) :
+            this(new MemoryStream(), encoding)
         {
-            _encoding = encoding;
-            dataStream = new MemoryStream();
+        }
 
-            boundary = "--MRHAIBoundary" + DateTime.Now.Ticks.ToString("X");
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="encoder">非二进制类参数写入时的读取编码方式</param>
+        /// <param name="dataStream">multipart/form-data数据写入流对象</param>
+        public MultipartFormData(Stream dataStream, Encoding encoder)
+        {
+            encoding = encoder;
 
+            boundary = "--OCEANHO" + DateTime.Now.Ticks.ToString("X");
             internalBoundaryBytes = Encoding.ASCII.GetBytes(boundary);
+
             newLineBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
             internalBoundaryStartOrEndBytes = Encoding.ASCII.GetBytes("--");
         }
@@ -105,7 +126,7 @@ namespace AimaTeam.Http
             if (flag == 0)
             {
                 flag++;
-                WriteBoundary();
+                Pri_WriteBoundary();
             }
         }
 
@@ -120,10 +141,10 @@ namespace AimaTeam.Http
                 dataStream.SetLength(dataStream.Length - (internalBoundaryBytes.Length + newLineBytes.Length));
 
             // 写入结束boundary
-            WriteEndBoundary();
+            Pri_WriteEndBoundary();
 
             // 结束 \r\n
-            WriteNewLine();
+            Pri_WriteNewLine();
             return this;
         }
         /// <summary>
@@ -134,7 +155,7 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public MultipartFormData AddParameter(string key, string value)
         {
-            return AddParameter(key, _encoding.GetBytes(value));
+            return AddParameter(key, encoding.GetBytes(value));
         }
 
         /// <summary>
@@ -179,26 +200,26 @@ namespace AimaTeam.Http
             if (flag == 0)
                 Begin();
 
-            WriteNewLine();
+            Pri_WriteNewLine();
 
             // Write("Content-Disposition: form-data; name=\"" + key + "\";");
-            Write("Content-Disposition: form-data; name=\"" + key + "\"");
-            WriteNewPartLine();
-            
+            Pri_Write("Content-Disposition: form-data; name=\"" + key + "\"");
+            Pri_WriteNewPartLine();
+
             if (start != 0 && length != value.Length)
             {
                 var _value = new byte[length];
                 Array.Copy(value, start, _value, 0, length);
-                Write(_value);
+                Pri_Write(_value);
             }
             else
             {
-                Write(value);
+                Pri_Write(value);
             }
 
             // 写入下一个分隔符
-            WriteNewLine();
-            WriteBoundary();
+            Pri_WriteNewLine();
+            Pri_WriteBoundary();
 
             flag++;
             return this;
@@ -249,28 +270,28 @@ namespace AimaTeam.Http
             if (flag == 0)
                 Begin();
 
-            WriteNewLine();
+            Pri_WriteNewLine();
 
-            Write("Content-Disposition: form-data; name=\"" + key + "\"; filename=\"" + fileName + "\"");
-            WriteNewLine();
+            Pri_Write("Content-Disposition: form-data; name=\"" + key + "\"; filename=\"" + fileName + "\"");
+            Pri_WriteNewLine();
 
-            Write("Content-Type:" + (string.IsNullOrEmpty(mediaType) ? "application/octet-stream" : mediaType) + "");
-            WriteNewPartLine();
+            Pri_Write("Content-Type:" + (string.IsNullOrEmpty(mediaType) ? "application/octet-stream" : mediaType) + "");
+            Pri_WriteNewPartLine();
 
             if (start != 0 && length != value.Length)
             {
                 var _value = new byte[length];
                 Array.Copy(value, start, _value, 0, length);
-                Write(_value);
+                Pri_Write(_value);
             }
             else
             {
-                Write(value);
+                Pri_Write(value);
             }
 
             // 写入下一个分隔符
-            WriteNewLine();
-            WriteBoundary();
+            Pri_WriteNewLine();
+            Pri_WriteBoundary();
 
             flag++;
             return this;
@@ -286,7 +307,7 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public MultipartFormData AddFileObject(string key, string fileObjName, Stream stream, string mediaType = null)
         {
-            return AddFileObject(key, fileObjName, GetDataBytes(dataStream, 4096), mediaType);
+            return AddFileObject(key, fileObjName, Pri_GetDataBytes(dataStream, 4096), mediaType);
         }
 
         /// <summary>
@@ -331,16 +352,19 @@ namespace AimaTeam.Http
         /// <returns></returns>
         public byte[] GetDataBytes(int bufferSize = 4096)
         {
-            return GetDataBytes(dataStream, bufferSize);
+            return Pri_GetDataBytes(dataStream, bufferSize);
         }
 
         #region Impl -> IDisposeable
 
+        /// <summary>
+        /// impl IDispose
+        /// </summary>
         public void Dispose()
         {
             if (dataStream != null)
             {
-                dataStream.Close();
+                dataStream.Dispose();
                 dataStream = null;
             }
         }
@@ -351,9 +375,10 @@ namespace AimaTeam.Http
         /// <summary>
         /// 获取写入了Multipart/form-data的数据流字节数组
         /// </summary>
+        /// <param name="stream">获取流的流对象</param>
         /// <param name="bufferSize">每次读取的buffer长度</param>
         /// <returns></returns>
-        private byte[] GetDataBytes(Stream stream, int bufferSize = 4096)
+        private byte[] Pri_GetDataBytes(Stream stream, int bufferSize = 4096)
         {
             var buffer_size = 0;
             var buffer_index = 0;
@@ -370,15 +395,15 @@ namespace AimaTeam.Http
         /// <summary>
         /// 写入 指定 _encoding 编码 str 的 字节数组
         /// </summary>
-        private void Write(string str)
+        private void Pri_Write(string str)
         {
-            Write(_encoding.GetBytes(str));
+            Pri_Write(encoding.GetBytes(str));
         }
 
         /// <summary>
         /// 写入 指定 bytes
         /// </summary>
-        private void Write(byte[] bytes)
+        private void Pri_Write(byte[] bytes)
         {
             dataStream.Write(bytes, 0, bytes.Length);
         }
@@ -386,7 +411,7 @@ namespace AimaTeam.Http
         /// <summary>
         /// 写入 multipart 换行符
         /// </summary>
-        private void WriteNewLine()
+        private void Pri_WriteNewLine()
         {
             dataStream.Write(newLineBytes, 0, newLineBytes.Length);
         }
@@ -394,16 +419,16 @@ namespace AimaTeam.Http
         /// <summary>
         /// 写入multipart 的新内容分割符（2个\r\n）
         /// </summary>
-        private void WriteNewPartLine()
+        private void Pri_WriteNewPartLine()
         {
-            WriteNewLine();
-            WriteNewLine();
+            Pri_WriteNewLine();
+            Pri_WriteNewLine();
         }
 
         /// <summary>
         /// 写入 boundary
         /// </summary>
-        private void WriteBoundary()
+        private void Pri_WriteBoundary()
         {
             // 写入 boundary 前面 的  --
             dataStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
@@ -415,10 +440,10 @@ namespace AimaTeam.Http
         /// <summary>
         /// 写入 结束的 boundary
         /// </summary>
-        private void WriteEndBoundary()
+        private void Pri_WriteEndBoundary()
         {
-            WriteNewLine();
-            WriteBoundary();
+            Pri_WriteNewLine();
+            Pri_WriteBoundary();
             dataStream.Write(internalBoundaryStartOrEndBytes, 0, internalBoundaryStartOrEndBytes.Length);
         }
         #endregion
