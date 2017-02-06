@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace AimaTeam.Http
 {
     /// <summary>
-    /// This is a extension library for <see cref="MultipartFormData"/> 
+    /// This is a extension class for <see cref="MultipartFormData"/> 
     /// </summary>
     public static partial class MultipartFormDataExtension
     {
